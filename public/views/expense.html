@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+
+<body>
+    <form action="" id="formId" onsubmit="saveDetails(event)">
+        <label for="price">Price:</label>
+        <input type="number" name="price" id="price">
+
+        <label for="description">Description:</label>
+        <input type="text" name="description" id="description">
+
+        <label for="category">Category:</label>
+        <select name="category" id="category">
+            <option value="op1">Education</option>
+            <option value="op1">Shopping</option>
+            <option value="op1">Entertainment</option>
+        </select>
+
+        <button type="submit">ADD</button>
+    </form>
+    <ul id="ulId"></ul>
+    <script src="../js/expense.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+
+</body>
+
+</html>
