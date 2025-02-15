@@ -8,6 +8,9 @@ let Expense = sequelize.define('expense', {
         allowNull: false,
         autoIncrement: true
     },
+    date: {
+        type: Sequelize.STRING
+    },
     price: {
         type: Sequelize.STRING,
         allowNull: false
@@ -20,8 +23,6 @@ let Expense = sequelize.define('expense', {
         type: Sequelize.STRING,
         allowNull: false
     },
-    date: {
-        type: Sequelize.STRING
-    }
+
 })
 module.exports = Expense;

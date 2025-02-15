@@ -1,14 +1,20 @@
 async function saveDetails(event) {
     event.preventDefault()
     try {
+        let token = localStorage.getItem('token')
+        if (!token) {
+            alert('user is not authenticated');
+            return;
+        }
+        let date = new Date().toLocaleDateString('en-GB')
         let price = event.target.price.value;
         let description = event.target.description.value;
         let category = event.target.category.value;
-        let date = new Date().toLocaleDateString('en-GB')
-        let obj = { price, description, category, date }
-        let response = await axios.post('http://localhost:3000/expense/add-expense', obj)
+
+        let obj = { date, price, description, category }
+        let response = await axios.post('http://localhost:3000/expense/add-expense', obj, { headers: { Authorization: token } })
         if (response.status === 201) {
-            document.getElementById('formId').value = '';
+            document.getElementById('formId').reset();
             displayExpense()
         }
     }
@@ -18,7 +24,12 @@ async function saveDetails(event) {
 }
 async function displayExpense() {
     try {
-        let response = await axios.get('http://localhost:3000/expense/get-expense')
+        let token = localStorage.getItem('token')
+        if (!token) {
+            alert('user is not authenticated');
+            return;
+        }
+        let response = await axios.get('http://localhost:3000/expense/get-expense', { headers: { Authorization: token } })
         let show = document.getElementById('ulId');
         show.innerHTML = '';
         let display = response.data.data;
@@ -33,7 +44,12 @@ async function displayExpense() {
 }
 async function deleteExpense(id) {
     try {
-        await axios.delete(`http://localhost:3000/expense/delete-expense/${id}`);
+        let token = localStorage.getItem('token')
+        if (!token) {
+            alert('user is not authenticated');
+            return;
+        }
+        await axios.delete(`http://localhost:3000/expense/delete-expense/${id}`, { headers: { Authorization: token } });
         displayExpense()
     }
     catch (err) {
