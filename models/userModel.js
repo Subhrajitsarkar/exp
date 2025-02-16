@@ -24,5 +24,9 @@ let User = sequelize.define('user', {
         type: Sequelize.BOOLEAN,
         defaultValue: false
     },
+    totalExpenses: {
+        type: Sequelize.STRING,
+        defaultValue: 0,
+    }
 })
 module.exports = User

@@ -127,6 +127,10 @@ function checkPremiumStatus() {
             if (parsed.ispremiumuser) {
                 document.getElementById('buy-premium').style.display = 'none';
                 document.getElementById('message').innerHTML = 'Premium user activated';
+
+                // Call showLeaderBoard if the user is a premium user
+                document.getElementById('show-leaderboard-btn').style.display = 'block';
+                showLeaderBoard();
             }
         } catch (err) {
             console.error('Failed to parse token:', err);
@@ -134,6 +138,26 @@ function checkPremiumStatus() {
     }
 }
 
+async function showLeaderBoard() {
+    let token = localStorage.getItem('token');
+    if (!token) {
+        alert('User is not authenticated');
+        return;
+    }
+    try {
+        let result = await axios.get('http://localhost:3000/premium/showleaderboard', {
+            headers: { Authorization: token }
+        });
+        let leaderboard = document.getElementById('leaderboard');
+        leaderboard.innerHTML = '<h3>User leaderboard</h3>';
+        result.data.forEach((userDetails) => {
+            leaderboard.innerHTML += `<li>${userDetails.name} - ${userDetails.totalExpenses}</li>`;
+        });
+    } catch (error) {
+        console.error('Error fetching leaderboard:', error);
+        alert('Failed to fetch leaderboard');
+    }
+}
 
 window.onload = function () {
     checkPremiumStatus();

@@ -72,20 +72,34 @@ app.post('/user/login', async (req, res) => {
 });
 
 app.post('/expense/add-expense', auth.authenticate, async (req, res) => {
+    let t;
     try {
         const { price, description, category, date } = req.body;
         if (!price || !description || !category || !date) throw new Error('All fields are required');
 
-        const response = await Expense.create({ price, description, category, date, userId: req.user.id });
+        t = await sequelize.transaction();
+        let response = await Expense.create({ price, description, category, date, userId: req.user.id }, { transaction: t });
+
+        let totalExpense = Number(req.user.totalExpenses) + Number(price);
+        await User.update({ totalExpenses: totalExpense }, { where: { id: req.user.id }, transaction: t })
+
+        t.commit()
         res.status(201).json({ response, message: 'Expense added' });
     } catch (err) {
+        if (t)
+            await t.rollback()
         res.json({ message: 'something wrong in add-expense backend' });
     }
 });
 
 app.get('/expense/get-expense', auth.authenticate, async (req, res) => {
     try {
-        const data = await Expense.findAll({ where: { userId: req.user.id } });
+        const data = await Expense.findAll(
+            {
+                where: { userId: req.user.id },
+                order: [['createdAt', 'DESC']],
+                attributes: ['id', 'date', 'price', 'description', 'category']
+            });
         res.json({ data });
     } catch (err) {
         res.json({ message: 'something wrong in add-expense backend' });
@@ -93,13 +107,25 @@ app.get('/expense/get-expense', auth.authenticate, async (req, res) => {
 });
 
 app.delete('/expense/delete-expense/:id', auth.authenticate, async (req, res) => {
+    let t;
     try {
         const id = req.params.id;
         if (!id) throw new Error('id is required');
 
-        await Expense.destroy({ where: { id, userId: req.user.id } });
+        t = await sequelize.transaction();
+        let expense = await Expense.findOne({ where: { id, userId: req.user.id }, transaction: t });
+        if (!expense) {
+            t.rollback();
+            return res.json({ message: 'something is wrong in delete-expense backend' });
+        }
+        await Expense.destroy({ where: { id }, transaction: t });
+        let updatedTotalExpense = Number(req.user.totalExpenses) - Number(expense.price);
+        await User.update({ totalExpenses: updatedTotalExpense }, { where: { id: req.user.id }, transaction: t });
+
+        t.commit();
         res.json({ message: 'Expense deleted' });
     } catch (err) {
+        if (t) t.rollback();
         res.json({ message: 'something is wrong in delete-expense backend' });
     }
 });
@@ -139,6 +165,19 @@ app.post('/razorpay/updatetransactionstatus', auth.authenticate, async (req, res
         res.json({ message: 'something went wrong in updatetransactionstatus backend' });
     }
 })
+
+app.get('/premium/showleaderboard', auth.authenticate, async (req, res) => {
+    try {
+        // Get users sorted by totalExpenses in descending order
+        let users = await User.findAll({
+            attributes: ['name', 'totalExpenses'],
+            order: [['totalExpenses', 'DESC']]
+        });
+        res.status(200).json(users);
+    } catch (err) {
+        res.status(500).json({ message: 'Error fetching leaderboard' });
+    }
+});
 
 // Database relations
 User.hasMany(Expense);
