@@ -19,6 +19,10 @@ let User = sequelize.define('user', {
     password: {
         type: Sequelize.STRING,
         allowNull: false
-    }
+    },
+    ispremiumuser: {
+        type: Sequelize.BOOLEAN,
+        defaultValue: false
+    },
 })
 module.exports = User

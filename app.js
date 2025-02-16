@@ -5,9 +5,12 @@ const cors = require('cors');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const auth = require('./middleware/auth');
+let Razorpay = require('razorpay')
 const User = require('./models/userModel');
 const Expense = require('./models/expenseModel');
+let Order = require('./models/orderModel')
 const sequelize = require('./utils/database');
+require('dotenv').config()
 
 const app = express();
 
@@ -44,6 +47,12 @@ app.post('/user/signup', async (req, res) => {
     }
 });
 
+// Helper functions
+function generateAccessToken(id, name, ispremiumuser) {
+    return jwt.sign({ userId: id, name, ispremiumuser }, 'subhra@28');
+}
+
+// filepath: /C:/Users/subhrajit/Desktop/exp/app.js
 app.post('/user/login', async (req, res) => {
     try {
         const { email, password } = req.body;
@@ -55,7 +64,7 @@ app.post('/user/login', async (req, res) => {
         const isValidPassword = await bcrypt.compare(password, user.password);
         if (!isValidPassword) return res.json({ message: 'password is not valid' });
 
-        const token = generateAccessToken(user.id, user.name);
+        const token = generateAccessToken(user.id, user.name, user.ispremiumuser);
         res.status(200).json({ message: 'logged in successfully🎉', token });
     } catch (err) {
         res.json({ message: 'error in login backend' });
@@ -95,14 +104,48 @@ app.delete('/expense/delete-expense/:id', auth.authenticate, async (req, res) =>
     }
 });
 
-// Helper functions
-function generateAccessToken(id, name) {
-    return jwt.sign({ userId: id, name }, 'subhra@28');
-}
+app.get('/razorpay/premiummembership', auth.authenticate, async (req, res) => {
+    try {
+        let rzp = new Razorpay({
+            key_id: process.env.KEY_ID,
+            key_secret: process.env.KEY_SECRET,
+        })
+        let amount = 10000
+        let options = {
+            amount: amount,
+            currency: "INR",
+            receipt: `order_rcptid_${new Date().getTime()}`,
+        }
+        let order = await rzp.orders.create(options)
+        await req.user.createOrder({ orderid: order.id, status: "PENDING" })
+        res.json({ order, key_id: rzp.key_id });
+    } catch (err) {
+        res.json({ message: 'something went wrong in premiummembership backend' });
+    }
+});
+
+app.post('/razorpay/updatetransactionstatus', auth.authenticate, async (req, res) => {
+    try {
+        let { order_id, payment_id } = req.body;
+        let order = await Order.findOne({ where: { orderid: order_id } })
+        if (!order)
+            res.json({ message: 'Order not found' })
+        let promise1 = order.update({ paymentid: payment_id, status: 'SUCCESSFUL' })
+        let promise2 = req.user.update({ ispremiumuser: true })
+        await Promise.all([promise1, promise2]);
+        res.json({ success: true, message: 'You are a premium user now', token: generateAccessToken(req.user.id, req.user.name, true) })
+    }
+    catch (err) {
+        res.json({ message: 'something went wrong in updatetransactionstatus backend' });
+    }
+})
 
 // Database relations
 User.hasMany(Expense);
 Expense.belongsTo(User);
+
+User.hasMany(Order);
+Order.belongsTo(User)
 
 // Sync database and start server
 sequelize.sync()
